@@ -67,8 +67,14 @@ class ConnectComponent extends Component {
 	*/
 	public $modelFields = array(
 		'password' => 'password',
-		'username' => 'username'
+		'username' => 'username',
+		'token' => 'facebook_oauth_token'
 	);
+
+	/**
+	 * The extended access token that is saved to the database
+	 */
+	protected $accessToken;
 	
 	/**
 	* Initialize, load the api, decide if we're logged in
@@ -99,6 +105,22 @@ class ConnectComponent extends Component {
 		if (!$this->noAuth && !empty($this->uid)) {
 			$this->__syncFacebookUser();
 		}
+	}
+
+   /**
+   * Sets the access token for api calls.  Use this if you get
+   * your access token by other means and just want the SDK
+   * to use it.
+   *
+   * @param string $access_token an access token.
+   * @return BaseFacebook
+   */
+	public function setAccessToken($access_token) {
+	   $this->accessToken = $access_token;
+	   if(!empty($this->FB)){
+	   		$this->FB->setAccessToken($access_token);
+	   }
+	   return $this;
 	}
 	
 	/**
@@ -146,12 +168,18 @@ class ConnectComponent extends Component {
 		if($Auth->user('id')){
 			$this->hasAccount = true;
 			$this->User->id = $Auth->user($this->User->primaryKey);
-			if (!$this->User->field('facebook_id')) {
-				$this->User->saveField('facebook_id', $this->uid);
+			if (!$this->User->field('facebook_id') || !$this->User->field($this->modelFields['token'])) {
+				$data = array(
+					'facebook_id' => $this->uid,
+					$this->modelFields['token'] => $this->FB->getAccessToken()
+				);
+				if($this->User->save($data, array('validate'=>false))){
+					$userData = $this->User->read(null,$this->User->id);
+					$this->Controller->Session->write('Auth.User',$userData['User']); //Update the session
+				}
 			}
 			return true;
-		} 
-		else {
+		} else {
 			// attempt to find the user by their facebook id
 			$this->authUser = $this->User->findByFacebookId($this->uid);
 			//if we have a user, set hasAccount
@@ -212,6 +240,21 @@ class ConnectComponent extends Component {
 		}
 		
 		return $this->me;
+	}
+
+	/**	
+	* This method handles revoke all permissions from the app
+	* https://developers.facebook.com/docs/reference/api/user/
+	* @source http://stackoverflow.com/questions/9050190/facebook-api-sdk-revoke-access
+	* @param string uid The facebook user to revoke
+	*/
+	public function revokeApp($uid = '/me'){
+		$token = $this->FB->getAccessToken();
+		if(!empty($token)){
+			return $this->FB->api($uid.'/permissions','delete');
+		}else{
+			return false;
+		}
 	}
 
 	/**
