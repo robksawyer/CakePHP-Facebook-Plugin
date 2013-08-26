@@ -123,31 +123,56 @@ class FacebookHelper extends AppHelper {
 				'id' => '',
 				'show-faces' => true,	// fb button only
 				'width' => 200,			// fb button only
-				'max-rows' => 1			// fb button only
+				'max-rows' => 1,		// fb button only
+				'oauth' => true,
+				'onclick' => '',
+				'oauthUrl' => ''
 			),
 			$options
 		);
-		if((isset($options['redirect']) && $options['redirect']) || $options['custom']){
-			$options['redirect'] = Router::url($options['redirect']);
-			$onclick = "login('".$options['redirect']."');";
+		if($options['oauth']){
+			if($options['onclick'])
 			if($options['img']){
 				$source = '/Facebook/img/'.$options['img'];
 				return $this->Html->image($source, array(
-				'alt' => $options['alt'],
-				'id' => $options['id'],
-				'url' => '#',
-				'onclick' => $onclick,
-				'escape' => false));
+						'alt' => $options['alt'],
+						'id' => $options['id'],
+						'url' => $options['oauthUrl'],
+						'onclick' => $options['onclick']
+					)
+				);
 			}
 			else {
-				return $this->Html->link($options['label'], '#', array(
-					'onclick' => $onclick, 'id' => $options['id'], 'escape' => false));
+				return $this->Html->link($options['label'], $options['oauthUrl'], array(
+					'onclick' => $options['onclick'], 
+					'id' => $options['id']
+				));
 			}
-		}
-		else {
-			if(!$options['id']){ unset($options['id']); }
-			unset($options['label'], $options['custom'], $options['redirect'], $options['img'], $options['alt']);
-			return $this->__fbTag('fb:login-button', $label, $options);
+		}else{
+
+			if((isset($options['redirect']) && $options['redirect']) || $options['custom']){
+				$options['redirect'] = Router::url($options['redirect']);
+				$onclick = "login('".$options['redirect']."');";
+				if($options['img']){
+					$source = '/Facebook/img/'.$options['img'];
+					return $this->Html->image($source, array(
+					'alt' => $options['alt'],
+					'id' => $options['id'],
+					'url' => '#',
+					'onclick' => $onclick,
+					'escape' => false));
+				}
+				else {
+					return $this->Html->link($options['label'], '#', array(
+						'onclick' => $onclick, 'id' => $options['id'], 'escape' => false));
+				}
+			}
+			else {
+				if(!$options['id']){ unset($options['id']); }
+				unset($options['label'], $options['custom'], $options['redirect'], $options['img'], $options['alt']);
+				return $this->__fbTag('fb:login-button', $label, $options);
+			}
+			
 		}
 	}
 	
@@ -494,7 +519,7 @@ class FacebookHelper extends AppHelper {
 	
 	public function init($options = null, $reload = true) {
 		$options = array_merge(array(
-			'perms' => 'email'
+			'perms' => 'email,user_about_me,user_birthday,user_location,publish_actions,publish_checkins,read_stream'
 		), (array)$options);
 		if ($appId = FacebookInfo::getConfig('appId')) {
 			$init = '<div id="fb-root"></div>';
